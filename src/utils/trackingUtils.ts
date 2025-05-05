@@ -1,4 +1,3 @@
-
 export interface Position {
   latitude: number;
   longitude: number;
@@ -27,14 +26,36 @@ export const formatTime = (seconds: number): string => {
 
 export const calculateCalories = (
   distance: number, 
-  mode: "Run" | "Bike", 
-  duration: number
+  mode: "Run" | "Bike" | "Walk" | "Other", 
+  duration: number,
+  weightKg: number = 70  // Default weight of 70kg if not provided
 ): number => {
-  // Simple calorie calculation
-  // Run: ~100 calories per km
-  // Bike: ~50 calories per km
-  const baseRate = mode === "Run" ? 100 : 50;
-  return Math.round(distance * baseRate);
+  let met: number;
+  
+  switch (mode) {
+    case "Run":
+      // MET for running varies from 7-12.5 depending on speed
+      // Assuming moderate pace of 10km/h (6 mph)
+      met = 10;
+      break;
+    case "Bike":
+      // MET for biking varies from 4-16 depending on speed/intensity
+      // Assuming moderate pace of 15km/h (9.3 mph)
+      met = 6;
+      break;
+    case "Walk":
+      // MET for walking varies from 2-5 depending on speed
+      met = 3.5;
+      break;
+    default:
+      // Default to moderate exercise
+      met = 5;
+  }
+  
+  // Calories burned = MET × weight (kg) × duration (hours)
+  // Duration is in seconds, so convert to hours
+  const durationHours = duration / 3600;
+  return Math.round(met * weightKg * durationHours);
 };
 
 export const formatDistance = (distance: number, unit: "km" | "mi" = "km"): string => {
@@ -98,4 +119,37 @@ export const generateRandomTokenHistory = (count: number = 5) => {
   }
 
   return transactions;
+};
+
+// New functions for fitness platforms
+
+export const convertHeartRateZone = (heartRate: number, maxHeartRate: number = 220): string => {
+  // Calculate percentage of max heart rate
+  const percent = heartRate / maxHeartRate;
+  
+  if (percent < 0.5) return "Very Light";
+  if (percent < 0.6) return "Light";
+  if (percent < 0.7) return "Moderate";
+  if (percent < 0.8) return "Hard";
+  if (percent < 0.9) return "Very Hard";
+  return "Maximum";
+};
+
+export const calculatePace = (distanceKm: number, durationSeconds: number): string => {
+  if (distanceKm <= 0 || durationSeconds <= 0) return "--:--";
+  
+  // Calculate minutes per kilometer
+  const totalMinutes = durationSeconds / 60;
+  const pace = totalMinutes / distanceKm;
+  
+  const minutes = Math.floor(pace);
+  const seconds = Math.floor((pace - minutes) * 60);
+  
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+
+export const estimateSteps = (distanceKm: number, strideLength: number = 0.75): number => {
+  // Average stride length of 0.75m
+  const steps = (distanceKm * 1000) / strideLength;
+  return Math.round(steps);
 };

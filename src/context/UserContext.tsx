@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export interface Activity {
@@ -8,6 +7,9 @@ export interface Activity {
   duration: number;
   calories: number;
   date: string;
+  syncedFrom?: string; // Platform this activity was synced from
+  externalId?: string; // ID from the external platform
+  heartRate?: number; // Average heart rate if available
 }
 
 export interface TokenTransaction {
@@ -23,7 +25,7 @@ export interface UserSettings {
   units: "km" | "mi";
 }
 
-export interface GoogleFitSettings {
+export interface FitnessSettings {
   steps: boolean;
   distance: boolean;
   calories: boolean;
@@ -33,11 +35,19 @@ export interface GoogleFitSettings {
   syncFrequency: "daily" | "realtime" | "manual";
 }
 
-export interface GoogleFitData {
+export interface FitnessConnection {
   isConnected: boolean;
   lastSync: Date | null;
   syncInProgress: boolean;
-  syncSettings: GoogleFitSettings;
+  syncSettings: FitnessSettings;
+  authToken?: string; // For storing the auth token when connected
+}
+
+export interface FitnessData {
+  googleFit: FitnessConnection;
+  appleHealth: FitnessConnection;
+  strava: FitnessConnection;
+  fitbit: FitnessConnection;
 }
 
 export interface UserData {
@@ -53,7 +63,7 @@ export interface UserData {
   activities: Activity[];
   tokenHistory: TokenTransaction[];
   settings: UserSettings;
-  googleFit: GoogleFitData;
+  fitness: FitnessData;
 }
 
 interface UserContextType {
@@ -61,9 +71,9 @@ interface UserContextType {
   updateUserData: (data: Partial<UserData>) => void;
   addActivity: (activity: Omit<Activity, "id" | "date">) => void;
   addTokenTransaction: (transaction: Omit<TokenTransaction, "id" | "date">) => void;
-  toggleGoogleFitConnection: () => void;
-  syncWithGoogleFit: () => void;
-  updateGoogleFitSettings: (setting: keyof GoogleFitSettings, value: boolean | string) => void;
+  toggleFitnessConnection: (platform: keyof FitnessData) => void;
+  syncWithFitnessPlatform: (platform: keyof FitnessData) => void;
+  updateFitnessSettings: (platform: keyof FitnessData, setting: keyof FitnessSettings, value: boolean | string) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -86,18 +96,62 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       darkMode: false,
       units: "km",
     },
-    googleFit: {
-      isConnected: false,
-      lastSync: null,
-      syncInProgress: false,
-      syncSettings: {
-        steps: true,
-        distance: true,
-        calories: true,
-        heartRate: true,
-        activities: true,
-        autoSync: true,
-        syncFrequency: "realtime",
+    fitness: {
+      googleFit: {
+        isConnected: false,
+        lastSync: null,
+        syncInProgress: false,
+        syncSettings: {
+          steps: true,
+          distance: true,
+          calories: true,
+          heartRate: true,
+          activities: true,
+          autoSync: true,
+          syncFrequency: "realtime",
+        },
+      },
+      appleHealth: {
+        isConnected: false,
+        lastSync: null,
+        syncInProgress: false,
+        syncSettings: {
+          steps: true,
+          distance: true,
+          calories: true,
+          heartRate: true,
+          activities: true,
+          autoSync: true,
+          syncFrequency: "realtime",
+        },
+      },
+      strava: {
+        isConnected: false,
+        lastSync: null,
+        syncInProgress: false,
+        syncSettings: {
+          steps: true,
+          distance: true,
+          calories: true,
+          heartRate: true,
+          activities: true,
+          autoSync: true,
+          syncFrequency: "realtime",
+        },
+      },
+      fitbit: {
+        isConnected: false,
+        lastSync: null,
+        syncInProgress: false,
+        syncSettings: {
+          steps: true,
+          distance: true,
+          calories: true,
+          heartRate: true,
+          activities: true,
+          autoSync: true,
+          syncFrequency: "realtime",
+        },
       },
     },
   });
@@ -146,51 +200,98 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
-  const toggleGoogleFitConnection = () => {
+  const toggleFitnessConnection = (platform: keyof FitnessData) => {
     setUserData((prev) => ({
       ...prev,
-      googleFit: {
-        ...prev.googleFit,
-        isConnected: !prev.googleFit.isConnected,
+      fitness: {
+        ...prev.fitness,
+        [platform]: {
+          ...prev.fitness[platform],
+          isConnected: !prev.fitness[platform].isConnected,
+        },
       },
     }));
   };
 
-  const syncWithGoogleFit = () => {
-    if (userData.googleFit.syncInProgress) return;
+  const syncWithFitnessPlatform = (platform: keyof FitnessData) => {
+    if (userData.fitness[platform].syncInProgress) return;
 
     setUserData((prev) => ({
       ...prev,
-      googleFit: {
-        ...prev.googleFit,
-        syncInProgress: true,
+      fitness: {
+        ...prev.fitness,
+        [platform]: {
+          ...prev.fitness[platform],
+          syncInProgress: true,
+        },
       },
     }));
 
     // Simulate API call with timeout
     setTimeout(() => {
+      // In a real app, this would be the place to call an actual fitness API
+      // and process the returned activities
+      
+      // For demo, let's simulate getting activities from the platform
+      const importedActivities = generateMockFitnessActivities(platform);
+      
+      // Add imported activities to user data
+      importedActivities.forEach(activity => {
+        addActivity({
+          ...activity,
+          syncedFrom: platform
+        });
+      });
+
       setUserData((prev) => ({
         ...prev,
-        googleFit: {
-          ...prev.googleFit,
-          lastSync: new Date(),
-          syncInProgress: false,
+        fitness: {
+          ...prev.fitness,
+          [platform]: {
+            ...prev.fitness[platform],
+            lastSync: new Date(),
+            syncInProgress: false,
+          },
         },
       }));
     }, 2000);
   };
 
-  const updateGoogleFitSettings = (
-    setting: keyof GoogleFitSettings,
+  const generateMockFitnessActivities = (platform: keyof FitnessData): Omit<Activity, "id" | "date" | "syncedFrom">[] => {
+    // Generate 1-3 random activities
+    const count = Math.floor(Math.random() * 3) + 1;
+    const activities = [];
+    
+    for (let i = 0; i < count; i++) {
+      const isRun = Math.random() > 0.5;
+      activities.push({
+        type: isRun ? "Run" : "Bike",
+        distance: parseFloat((Math.random() * 10 + 1).toFixed(2)),
+        duration: Math.floor(Math.random() * 7200 + 900), // 15-135 minutes in seconds
+        calories: Math.floor(Math.random() * 500 + 100),
+        externalId: `${platform}-${Date.now()}-${i}`,
+        heartRate: Math.floor(Math.random() * 60 + 120), // Random heart rate between 120-180
+      });
+    }
+    
+    return activities;
+  };
+
+  const updateFitnessSettings = (
+    platform: keyof FitnessData,
+    setting: keyof FitnessSettings,
     value: boolean | string
   ) => {
     setUserData((prev) => ({
       ...prev,
-      googleFit: {
-        ...prev.googleFit,
-        syncSettings: {
-          ...prev.googleFit.syncSettings,
-          [setting]: value,
+      fitness: {
+        ...prev.fitness,
+        [platform]: {
+          ...prev.fitness[platform],
+          syncSettings: {
+            ...prev.fitness[platform].syncSettings,
+            [setting]: value,
+          },
         },
       },
     }));
@@ -203,9 +304,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         updateUserData,
         addActivity,
         addTokenTransaction,
-        toggleGoogleFitConnection,
-        syncWithGoogleFit,
-        updateGoogleFitSettings,
+        toggleFitnessConnection,
+        syncWithFitnessPlatform,
+        updateFitnessSettings,
       }}
     >
       {children}

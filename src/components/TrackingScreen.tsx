@@ -1,11 +1,12 @@
-
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/context/UserContext";
 import { useTracking } from "@/hooks/useTracking";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { formatPlatformName } from "@/utils/fitnessSyncUtils";
 
 const TrackingScreen: React.FC = () => {
   const { state, startTracking, pauseTracking, resumeTracking, stopTracking, setTrackingMode, formatTime } = useTracking();
@@ -15,6 +16,9 @@ const TrackingScreen: React.FC = () => {
   const [showSummary, setShowSummary] = useState<boolean>(false);
   const [workoutName, setWorkoutName] = useState<string>("");
   const [summary, setSummary] = useState<any>(null);
+  const [showSyncDialog, setShowSyncDialog] = useState<boolean>(false);
+  const [syncPlatforms, setSyncPlatforms] = useState<Array<keyof typeof userData.fitness>>([]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Array<keyof typeof userData.fitness>>([]);
 
   useEffect(() => {
     // Mock map initialization if we had a real map
@@ -43,13 +47,56 @@ const TrackingScreen: React.FC = () => {
   };
 
   const handleSaveWorkout = () => {
+    const platformsToSync = [];
+    
+    // Check which platforms are connected and have autoSync enabled
+    Object.entries(userData.fitness).forEach(([platform, connection]) => {
+      if (connection.isConnected && connection.syncSettings.autoSync) {
+        platformsToSync.push(platform);
+      }
+    });
+    
+    if (platformsToSync.length > 0) {
+      setShowSyncDialog(true);
+      setSyncPlatforms(platformsToSync as Array<keyof typeof userData.fitness>);
+    } else {
+      completeWorkout();
+    }
+  };
+
+  const completeWorkout = () => {
     toast({
       title: "Workout Saved",
       description: workoutName ? `"${workoutName}" has been saved.` : "Your workout has been saved.",
     });
+    
+    // Push to connected platforms if selected
+    selectedPlatforms.forEach(platform => {
+      // In a real app, this would call an API to push the workout to the platform
+      toast({
+        title: `Synced to ${formatPlatformName(platform)}`,
+        description: "Your workout has been sent to the platform.",
+      });
+    });
+    
     setShowSummary(false);
+    setShowSyncDialog(false);
     setWorkoutName("");
   };
+
+  const togglePlatform = (platform: keyof typeof userData.fitness) => {
+    setSelectedPlatforms(prev => 
+      prev.includes(platform) 
+        ? prev.filter(p => p !== platform)
+        : [...prev, platform]
+    );
+  };
+
+  useEffect(() => {
+    if (syncPlatforms.length > 0) {
+      setSelectedPlatforms([...syncPlatforms]);
+    }
+  }, [syncPlatforms]);
 
   return (
     <div className="pt-4">
@@ -223,6 +270,54 @@ const TrackingScreen: React.FC = () => {
           <DialogFooter>
             <Button onClick={handleSaveWorkout} className="w-full bg-neon-cyan hover:bg-neon-cyan/80">
               Save Workout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Fitness Sync Dialog */}
+      <Dialog open={showSyncDialog} onOpenChange={setShowSyncDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sync Workout</DialogTitle>
+            <DialogDescription>
+              Choose fitness platforms to sync this workout with:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-4">
+            {syncPlatforms.map(platform => (
+              <div key={platform} className="flex items-center space-x-2">
+                <Checkbox 
+                  id={`sync-${platform}`}
+                  checked={selectedPlatforms.includes(platform)}
+                  onCheckedChange={() => togglePlatform(platform)}
+                />
+                <label
+                  htmlFor={`sync-${platform}`}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {formatPlatformName(platform)}
+                </label>
+              </div>
+            ))}
+          </div>
+          
+          <DialogFooter className="flex space-x-2 justify-end">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowSyncDialog(false);
+                completeWorkout();
+              }}
+            >
+              Skip Sync
+            </Button>
+            <Button 
+              onClick={completeWorkout}
+              className="bg-neon-cyan hover:bg-neon-cyan/80"
+            >
+              Sync & Save
             </Button>
           </DialogFooter>
         </DialogContent>
