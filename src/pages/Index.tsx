@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { UserProvider } from "@/context/UserContext";
 import Header from "@/components/Header";
@@ -239,10 +238,10 @@ const MainContent = () => {
                 <div>
                   <h4 className="font-medium">Google Fit</h4>
                   <p className="text-xs opacity-70">
-                    {userData.googleFit.isConnected
+                    {userData.fitness.googleFit.isConnected
                       ? `Connected · Last sync: ${
-                          userData.googleFit.lastSync
-                            ? new Date(userData.googleFit.lastSync).toLocaleString()
+                          userData.fitness.googleFit.lastSync
+                            ? new Date(userData.fitness.googleFit.lastSync).toLocaleString()
                             : "Never"
                         }`
                       : "Not connected"}
@@ -250,12 +249,12 @@ const MainContent = () => {
                 </div>
                 <button
                   className={`px-3 py-1 rounded text-sm font-medium ${
-                    userData.googleFit.isConnected
+                    userData.fitness.googleFit.isConnected
                       ? "bg-gray-200 dark:bg-dark-surface"
                       : "bg-neon-cyan text-white"
                   }`}
                 >
-                  {userData.googleFit.isConnected ? "Manage" : "Connect"}
+                  {userData.fitness.googleFit.isConnected ? "Manage" : "Connect"}
                 </button>
               </div>
             </div>
