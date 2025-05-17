@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/context/UserContext";
 import { useTracking } from "@/hooks/useTracking";
@@ -19,6 +20,7 @@ const TrackingScreen: React.FC = () => {
   const [showSyncDialog, setShowSyncDialog] = useState<boolean>(false);
   const [syncPlatforms, setSyncPlatforms] = useState<Array<keyof typeof userData.fitness>>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<Array<keyof typeof userData.fitness>>([]);
+  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Mock map initialization if we had a real map
@@ -26,6 +28,43 @@ const TrackingScreen: React.FC = () => {
       console.log("Map would be initialized here");
     }
   }, [state.isTracking]);
+
+  // Auto-save functionality when summary is shown
+  useEffect(() => {
+    if (showSummary && summary) {
+      // Set a default name based on the workout type and current date/time
+      const defaultName = `${summary.mode} on ${new Date().toLocaleDateString()}`;
+      setWorkoutName(defaultName);
+      
+      // Set a timeout to auto-save after 30 seconds if user hasn't interacted
+      const timeout = setTimeout(() => {
+        handleSaveWorkout(true);
+      }, 30000); // 30 seconds
+      
+      setAutoSaveTimeout(timeout);
+      
+      // Clear timeout on unmount or when dialog closes
+      return () => {
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+      };
+    }
+  }, [showSummary, summary]);
+  
+  // Clear auto-save timeout when workout name changes (user is interacting)
+  useEffect(() => {
+    if (autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout);
+      
+      // Reset the timeout
+      const timeout = setTimeout(() => {
+        handleSaveWorkout(true);
+      }, 30000);
+      
+      setAutoSaveTimeout(timeout);
+    }
+  }, [workoutName]);
 
   const handleStartPauseResume = () => {
     if (!state.isTracking) {
@@ -46,7 +85,13 @@ const TrackingScreen: React.FC = () => {
     }
   };
 
-  const handleSaveWorkout = () => {
+  const handleSaveWorkout = (isAutoSave: boolean = false) => {
+    // Clear any existing timeout
+    if (autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout);
+      setAutoSaveTimeout(null);
+    }
+    
     const platformsToSync = [];
     
     // Check which platforms are connected and have autoSync enabled
@@ -60,13 +105,13 @@ const TrackingScreen: React.FC = () => {
       setShowSyncDialog(true);
       setSyncPlatforms(platformsToSync as Array<keyof typeof userData.fitness>);
     } else {
-      completeWorkout();
+      completeWorkout(isAutoSave);
     }
   };
 
-  const completeWorkout = () => {
+  const completeWorkout = (isAutoSave: boolean = false) => {
     toast({
-      title: "Workout Saved",
+      title: isAutoSave ? "Workout Auto-Saved" : "Workout Saved",
       description: workoutName ? `"${workoutName}" has been saved.` : "Your workout has been saved.",
     });
     
@@ -97,6 +142,14 @@ const TrackingScreen: React.FC = () => {
       setSelectedPlatforms([...syncPlatforms]);
     }
   }, [syncPlatforms]);
+  
+  // Cancel auto-save when sync dialog is shown
+  useEffect(() => {
+    if (showSyncDialog && autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout);
+      setAutoSaveTimeout(null);
+    }
+  }, [showSyncDialog]);
 
   return (
     <div className="pt-4">
@@ -213,7 +266,14 @@ const TrackingScreen: React.FC = () => {
       </div>
       
       {/* Workout Summary Dialog */}
-      <Dialog open={showSummary} onOpenChange={setShowSummary}>
+      <Dialog open={showSummary} onOpenChange={(open) => {
+        if (!open && autoSaveTimeout) {
+          clearTimeout(autoSaveTimeout);
+          setAutoSaveTimeout(null);
+          handleSaveWorkout(true);
+        }
+        setShowSummary(open);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-xl">Workout Complete!</DialogTitle>
@@ -265,10 +325,14 @@ const TrackingScreen: React.FC = () => {
                 placeholder={`${summary?.mode} on ${new Date().toLocaleDateString()}`}
               />
             </div>
+            
+            <div className="text-xs text-center text-gray-500 mb-4">
+              Workout will be auto-saved in {autoSaveTimeout ? "30" : "0"} seconds
+            </div>
           </div>
           
           <DialogFooter>
-            <Button onClick={handleSaveWorkout} className="w-full bg-neon-cyan hover:bg-neon-cyan/80">
+            <Button onClick={() => handleSaveWorkout(false)} className="w-full bg-neon-cyan hover:bg-neon-cyan/80">
               Save Workout
             </Button>
           </DialogFooter>
@@ -314,7 +378,7 @@ const TrackingScreen: React.FC = () => {
               Skip Sync
             </Button>
             <Button 
-              onClick={completeWorkout}
+              onClick={() => completeWorkout()}
               className="bg-neon-cyan hover:bg-neon-cyan/80"
             >
               Sync & Save
