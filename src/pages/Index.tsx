@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { UserProvider } from "@/context/UserContext";
 import Header from "@/components/Header";
@@ -6,11 +7,16 @@ import TrackingScreen from "@/components/TrackingScreen";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateRandomActivities, generateRandomTokenHistory } from "@/utils/trackingUtils";
 import { useUser } from "@/context/UserContext";
+import { useAuth0 } from "@auth0/auth0-react";
+import Login from "@/components/Login";
+import { useNavigate } from "react-router-dom";
 
 const MainContent = () => {
   const [currentTab, setCurrentTab] = useState<string>("home");
   const [showTracking, setShowTracking] = useState<boolean>(false);
   const { userData, updateUserData } = useUser();
+  const { isAuthenticated } = useAuth0();
+  const navigate = useNavigate();
 
   const handleTabChange = (value: string) => {
     setCurrentTab(value);
@@ -24,8 +30,18 @@ const MainContent = () => {
     setCurrentTab("tracking");
   };
 
+  const handleLogin = () => {
+    navigate("/dashboard");
+  };
+
   return (
     <div className="container mx-auto px-4 pt-16 pb-24">
+      {!isAuthenticated && (
+        <div className="mb-8">
+          <Login onLogin={handleLogin} />
+        </div>
+      )}
+
       <Tabs
         defaultValue="home"
         value={currentTab}
@@ -268,6 +284,7 @@ const MainContent = () => {
 const Index: React.FC = () => {
   const AppContent = () => {
     const { updateUserData } = useUser();
+    const { isAuthenticated } = useAuth0();
     
     useEffect(() => {
       // Generate some dummy data on first load
