@@ -1,4 +1,3 @@
-
 import { Activity, FitnessData } from "@/context/UserContext";
 import { formatTime } from "./trackingUtils";
 
@@ -54,19 +53,17 @@ export const convertExternalActivity = (
 /**
  * Format a fitness platform's name for display
  */
-export const formatPlatformName = (platform: keyof FitnessData): string => {
-  switch (platform) {
-    case "googleFit":
-      return "Google Fit";
-    case "appleHealth":
-      return "Apple Health";
-    case "strava":
-      return "Strava";
-    case "fitbit":
-      return "Fitbit";
-    default:
-      return platform;
-  }
+export const formatPlatformName = (platformKey: string): string => {
+  // Existing implementation stays the same
+  const platformNames: Record<string, string> = {
+    appleHealth: "Apple Health",
+    googleFit: "Google Fit",
+    fitbit: "Fitbit",
+    strava: "Strava",
+    garmin: "Garmin",
+  };
+
+  return platformNames[platformKey] || platformKey;
 };
 
 /**

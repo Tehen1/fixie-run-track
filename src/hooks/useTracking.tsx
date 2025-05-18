@@ -8,7 +8,7 @@ interface Position {
   longitude: number;
 }
 
-interface TrackingState {
+export interface TrackingStateType {
   isTracking: boolean;
   isPaused: boolean;
   mode: "Run" | "Bike";
