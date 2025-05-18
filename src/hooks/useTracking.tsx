@@ -24,7 +24,7 @@ export interface TrackingStateType {
 export const useTracking = () => {
   const { addActivity, addTokenTransaction } = useUser();
   const { toast } = useToast();
-  const [state, setState] = useState<TrackingState>({
+  const [state, setState] = useState<TrackingStateType>({
     isTracking: false,
     isPaused: false,
     mode: "Run",

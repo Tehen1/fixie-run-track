@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/context/UserContext";
 import { useTracking } from "@/hooks/useTracking";
@@ -8,6 +7,7 @@ import TrackingControls from "./tracking/TrackingControls";
 import TrackingStats from "./tracking/TrackingStats";
 import WorkoutSummaryDialog from "./tracking/WorkoutSummaryDialog";
 import SyncPlatformsDialog from "./tracking/SyncPlatformsDialog";
+import { formatPlatformName } from "@/utils/fitnessSyncUtils";
 
 const TrackingScreen: React.FC = () => {
   const { state, startTracking, pauseTracking, resumeTracking, stopTracking, setTrackingMode, formatTime } = useTracking();
